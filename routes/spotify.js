@@ -6,8 +6,9 @@ const { URLSearchParams } = require("url");
 const CLIENT_ID = "b9f0089017e4483b93e97380f0c26fd9";
 const CLIENT_SECRET = "06037f9ab0e04905a1cd2d88a88e21f2";
 
-const REDIRECT_URI = "http://localhost:3000/spotify/callback";
-const BASE_URL = "http://localhost:3000/spotify";
+const CLIENT_URL = "http://localhost:3000/spotify/";
+const REDIRECT_URI = "http://localhost:3001/spotify/callback";
+const BASE_URL = "http://localhost:3001/spotify";
 
 const API_BASE_URI = "https://api.spotify.com/v1";
 
