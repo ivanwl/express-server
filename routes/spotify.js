@@ -104,7 +104,7 @@ router.get("/callback", (req, res) => {
       console.log("Access Token: " + accessToken);
       console.log("Refresh Token: " + refreshToken);
       console.log("Redirecting to Spotify base...");
-      res.redirect(BASE_URL);
+      res.redirect(CLIENT_URL);
     });
 });
 
