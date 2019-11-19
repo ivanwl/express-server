@@ -2,9 +2,12 @@ var express = require("express");
 var router = express.Router();
 var fetch = require("node-fetch");
 const { URLSearchParams } = require("url");
+const path = require("path");
+const fs = require("fs");
+var spotifyJSON = require("../public/json/spotify.json");
 
-const CLIENT_ID = "b9f0089017e4483b93e97380f0c26fd9";
-const CLIENT_SECRET = "06037f9ab0e04905a1cd2d88a88e21f2";
+const CLIENT_ID = spotifyJSON.clientId;
+const CLIENT_SECRET = spotifyJSON.clientSecret;
 
 const CLIENT_URL = "http://localhost:3000/spotify/";
 const REDIRECT_URI = "http://localhost:3001/spotify/callback";
@@ -12,8 +15,8 @@ const BASE_URL = "http://localhost:3001/spotify";
 
 const API_BASE_URI = "https://api.spotify.com/v1";
 
-let accessToken = "";
-let refreshToken = "";
+let accessToken = spotifyJSON.accessToken;
+let refreshToken = spotifyJSON.refreshToken;
 
 function requestTokens(code) {
   const uri = "https://accounts.spotify.com/api/token";
@@ -29,12 +32,35 @@ function requestTokens(code) {
   });
 }
 
+function refreshTokens() {
+  const uri = "https://accounts.spotify.com/api/token";
+  let params = new URLSearchParams();
+  params.append("grant_type", "refresh_token");
+  params.append("refresh_token", refreshToken);
+  params.append("client_id", CLIENT_ID);
+  params.append("client_secret", CLIENT_SECRET);
+  return fetch(uri, {
+    method: "POST",
+    body: params
+  })
+    .then(response => response.json())
+    .then(json => {
+      accessToken = json.access_token;
+      console.log("Access Token: " + accessToken);
+      return json;
+    });
+}
+
 router.get("/", (req, res) => {
+  console.log("Request: Spotify Base URL");
   res.send("Spotify Service");
 });
 
+//authentication - first call for (authorization code)
 router.get("/login", (req, res) => {
-  const scopes = encodeURIComponent("user-read-private user-read-email");
+  const scopes = encodeURIComponent(
+    "user-read-private user-read-email playlist-read-private"
+  );
   const authorizeURI = "https://accounts.spotify.com/authorize";
   res.redirect(
     authorizeURI +
@@ -48,6 +74,7 @@ router.get("/login", (req, res) => {
   );
 });
 
+//authentication - second call for (refresh token, access token)
 router.get("/callback", (req, res) => {
   const code = req.query.code;
   if (!code) return console.log(req.query.error);
@@ -60,9 +87,37 @@ router.get("/callback", (req, res) => {
     })
     .then(json => {
       if (!json) return res.send("error");
-      accessToken = json.accessToken;
-      refreshToken = json.refreshToken;
+      accessToken = json.access_token;
+      refreshToken = json.refresh_token;
+      spotifyJSON.accessToken = accessToken;
+      spotifyJSON.refreshToken = refreshToken;
+      fs.writeFile(
+        path.resolve(__dirname, "../public/json/spotify.json"),
+        JSON.stringify(spotifyJSON, null, 2),
+        err => {
+          if (err) console.log(err);
+        }
+      );
+      console.log("Access Token: " + accessToken);
+      console.log("Refresh Token: " + refreshToken);
       res.redirect(BASE_URL);
+    });
+});
+
+router.get("/playlist", (req, res) => {
+  console.log("Request user playlists...");
+  return fetch(API_BASE_URI + "/me/playlists", {
+    headers: {
+      Authorization: "Bearer " + accessToken
+    }
+  })
+    .then(response => {
+      res.status(response.status);
+      return response.json();
+    })
+    .then(json => {
+      console.log("Sending user playlist");
+      return json;
     });
 });
 
