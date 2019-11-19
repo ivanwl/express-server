@@ -52,16 +52,18 @@ function refreshTokens() {
 }
 
 router.get("/", (req, res) => {
-  console.log("Request: Spotify Base URL");
+  console.log("Request: Spotify base");
   res.send("Spotify Service");
 });
 
 //authentication - first call for (authorization code)
 router.get("/login", (req, res) => {
+  console.log("Request: login");
   const scopes = encodeURIComponent(
     "user-read-private user-read-email playlist-read-private"
   );
   const authorizeURI = "https://accounts.spotify.com/authorize";
+  console.log("Redirecting to Spotify login page...");
   res.redirect(
     authorizeURI +
       "?response_type=code" +
@@ -76,6 +78,7 @@ router.get("/login", (req, res) => {
 
 //authentication - second call for (refresh token, access token)
 router.get("/callback", (req, res) => {
+  console.log("Request: Spotify callback");
   const code = req.query.code;
   if (!code) return console.log(req.query.error);
 
@@ -100,12 +103,14 @@ router.get("/callback", (req, res) => {
       );
       console.log("Access Token: " + accessToken);
       console.log("Refresh Token: " + refreshToken);
+      console.log("Redirecting to Spotify base...");
       res.redirect(BASE_URL);
     });
 });
 
+//GET user playlist
 router.get("/playlist", (req, res) => {
-  console.log("Request user playlists...");
+  console.log("Request: user playlists");
   return fetch(API_BASE_URI + "/me/playlists", {
     headers: {
       Authorization: "Bearer " + accessToken
@@ -116,8 +121,8 @@ router.get("/playlist", (req, res) => {
       return response.json();
     })
     .then(json => {
-      console.log("Sending user playlist");
-      return json;
+      console.log("Sent: user playlists");
+      return res.send(json);
     });
 });
 
