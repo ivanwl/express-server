@@ -64,7 +64,7 @@ router.get("/login", (req, res) => {
   );
   const authorizeURI = "https://accounts.spotify.com/authorize";
   console.log("Redirecting to Spotify login page...");
-  res.redirect(
+  res.send(
     authorizeURI +
       "?response_type=code" +
       "&client_id=" +
