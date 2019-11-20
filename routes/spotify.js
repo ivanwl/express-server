@@ -4,7 +4,7 @@ var fetch = require("node-fetch");
 const { URLSearchParams } = require("url");
 const path = require("path");
 const fs = require("fs");
-var spotifyJSON = require("../public/json/spotify.json");
+var spotifyJSON = require("../assets/spotify.json");
 
 const CLIENT_ID = spotifyJSON.clientId;
 const CLIENT_SECRET = spotifyJSON.clientSecret;
