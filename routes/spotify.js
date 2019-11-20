@@ -95,7 +95,7 @@ router.get("/callback", (req, res) => {
       spotifyJSON.accessToken = accessToken;
       spotifyJSON.refreshToken = refreshToken;
       fs.writeFile(
-        path.resolve(__dirname, "../public/json/spotify.json"),
+        path.resolve(__dirname, "../assets/spotify.json"),
         JSON.stringify(spotifyJSON, null, 2),
         err => {
           if (err) console.log(err);
