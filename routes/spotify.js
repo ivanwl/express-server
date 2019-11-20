@@ -4,51 +4,82 @@ var fetch = require("node-fetch");
 const { URLSearchParams } = require("url");
 const path = require("path");
 const fs = require("fs");
-var spotifyJSON = require("../assets/spotify.json");
+const spotifyConfig = require("../config/spotifyConfig");
+var spotifyTokens = require("../assets/spotify");
+require("../utils/statusCodes");
 
-const CLIENT_ID = spotifyJSON.clientId;
-const CLIENT_SECRET = spotifyJSON.clientSecret;
+const CLIENT_ID = spotifyConfig.client_id;
+const CLIENT_SECRET = spotifyConfig.client_secret;
+const CLIENT_URL = spotifyConfig.client_url;
+const REDIRECT_URL = spotifyConfig.redirect_url;
+const CURRENT_URL = spotifyConfig.server_url;
+const API_BASE_URI = spotifyConfig.api_uri;
+const API_TOKEN_URI = spotifyConfig.api_token_uri;
 
-const CLIENT_URL = "http://localhost:3000/spotify/";
-const REDIRECT_URI = "http://localhost:3001/spotify/callback";
-const BASE_URL = "http://localhost:3001/spotify";
+let accessToken = spotifyTokens.access_token;
+let refreshToken = spotifyTokens.refresh_token;
 
-const API_BASE_URI = "https://api.spotify.com/v1";
-
-let accessToken = spotifyJSON.accessToken;
-let refreshToken = spotifyJSON.refreshToken;
+function constructHeader() {
+  return {
+    headers: {
+      Authorization: "Bearer " + accessToken
+    }
+  };
+}
 
 function requestTokens(code) {
-  const uri = "https://accounts.spotify.com/api/token";
+  console.log("Acquiring refreshTokens...");
   let params = new URLSearchParams();
   params.append("grant_type", "authorization_code");
   params.append("code", code);
-  params.append("redirect_uri", REDIRECT_URI);
+  params.append("redirect_uri", REDIRECT_URL);
   params.append("client_id", CLIENT_ID);
   params.append("client_secret", CLIENT_SECRET);
-  return fetch(uri, {
+  return fetch(API_TOKEN_URI, {
     method: "POST",
     body: params
   });
 }
 
 function refreshTokens() {
-  const uri = "https://accounts.spotify.com/api/token";
+  console.log("Acquiring new access token...");
   let params = new URLSearchParams();
   params.append("grant_type", "refresh_token");
   params.append("refresh_token", refreshToken);
   params.append("client_id", CLIENT_ID);
   params.append("client_secret", CLIENT_SECRET);
-  return fetch(uri, {
+  return fetch(API_TOKEN_URI, {
     method: "POST",
     body: params
   })
-    .then(response => response.json())
+    .then(response => (response.ok ? response.json() : console.log(response)))
     .then(json => {
       accessToken = json.access_token;
       console.log("Access Token: " + accessToken);
+      spotifyTokens.access_token = accessToken;
+      saveTokens();
       return json;
     });
+}
+
+function saveTokens() {
+  fs.writeFile(
+    path.resolve(__dirname, "../assets/spotify.json"),
+    JSON.stringify(spotifyTokens, null, 2),
+    err => {
+      if (err) console.error(err);
+    }
+  );
+}
+
+function getFetch(endpoint) {
+  console.log("Request: " + API_BASE_URI + endpoint);
+  return fetch(API_BASE_URI + endpoint, constructHeader()).then(response => {
+    if (response.status === 401) {
+      console.log("Access Token expired");
+      return refreshTokens().then(() => getFetch(endpoint));
+    } else return response.json();
+  });
 }
 
 router.get("/", (req, res) => {
@@ -72,7 +103,7 @@ router.get("/login", (req, res) => {
       "&scope=" +
       scopes +
       "&redirect_uri=" +
-      REDIRECT_URI
+      REDIRECT_URL
   );
 });
 
@@ -80,50 +111,40 @@ router.get("/login", (req, res) => {
 router.get("/callback", (req, res) => {
   console.log("Request: Spotify callback");
   const code = req.query.code;
-  if (!code) return console.log(req.query.error);
+  if (!code) {
+    console.error(req.query.error);
+    return res.status(INTERNAL_SERVER_ERROR).send(req.query.error);
+  }
 
   let response = requestTokens(code);
-  response
-    .then(result => {
-      if (!result.ok) return null;
-      return result.json();
-    })
-    .then(json => {
-      if (!json) return res.send("error");
+  response.then(result => {
+    if (!result.ok) {
+      console.warn(result.status + " " + result.statusText);
+      return res.status(result.status).send(result.statusText);
+    }
+    return result.json().then(json => {
       accessToken = json.access_token;
       refreshToken = json.refresh_token;
-      spotifyJSON.accessToken = accessToken;
-      spotifyJSON.refreshToken = refreshToken;
-      fs.writeFile(
-        path.resolve(__dirname, "../assets/spotify.json"),
-        JSON.stringify(spotifyJSON, null, 2),
-        err => {
-          if (err) console.log(err);
-        }
-      );
       console.log("Access Token: " + accessToken);
       console.log("Refresh Token: " + refreshToken);
+      spotifyTokens.access_token = accessToken;
+      spotifyTokens.refresh_token = refreshToken;
+      console.log("Saving tokens...");
+      saveTokens();
       console.log("Redirecting to Spotify base...");
       res.redirect(CLIENT_URL);
     });
+  });
 });
 
-//GET user playlist
-router.get("/playlist", (req, res) => {
-  console.log("Request: user playlists");
-  return fetch(API_BASE_URI + "/me/playlists", {
-    headers: {
-      Authorization: "Bearer " + accessToken
-    }
-  })
-    .then(response => {
-      res.status(response.status);
-      return response.json();
-    })
-    .then(json => {
-      console.log("Sent: user playlists");
-      return res.send(json);
-    });
+//GET user playlists
+router.get("/playlists", (req, res) => {
+  return getFetch("/me/playlists").then(json => res.send(json));
+});
+
+//GET playlist by Id
+router.get("/playlist/:id", (req, res) => {
+  return getFetch(req.route.path).then(json => res.send(json));
 });
 
 module.exports = router;
