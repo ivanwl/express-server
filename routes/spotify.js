@@ -72,9 +72,9 @@ function saveTokens() {
   );
 }
 
-function getFetch(endpoint) {
-  console.log("Request: " + API_BASE_URI + endpoint);
-  return fetch(API_BASE_URI + endpoint, constructHeader()).then(response => {
+function getFetch(uri) {
+  console.log("Request: " + uri);
+  return fetch(uri, constructHeader()).then(response => {
     if (response.status === 401) {
       console.log("Access Token expired");
       return refreshTokens().then(() => getFetch(endpoint));
@@ -139,12 +139,14 @@ router.get("/callback", (req, res) => {
 
 //GET user playlists
 router.get("/playlists", (req, res) => {
-  return getFetch("/me/playlists").then(json => res.send(json));
+  return getFetch(API_BASE_URI + "/me/playlists").then(json => res.send(json));
 });
 
 //GET playlist by Id
 router.get("/playlist/:id", (req, res) => {
-  return getFetch(req.route.path).then(json => res.send(json));
+  return getFetch(API_BASE_URI + "/playlists/" + req.params.id).then(json =>
+    res.send(json)
+  );
 });
 
 module.exports = router;

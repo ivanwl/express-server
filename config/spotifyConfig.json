@@ -2,7 +2,7 @@
   "server_url": "http://localhost:3001/spotify",
   "client_id": "b9f0089017e4483b93e97380f0c26fd9",
   "client_secret": "06037f9ab0e04905a1cd2d88a88e21f2",
-  "client_url": "http://localhost:3000/spotify/",
+  "client_url": "http://localhost:3000/spotify",
   "redirect_url": "http://localhost:3001/spotify/callback",
   "api_uri": "https://api.spotify.com/v1",
   "api_token_uri": "https://accounts.spotify.com/api/token"
