@@ -77,7 +77,7 @@ function getFetch(uri) {
   return fetch(uri, constructHeader()).then(response => {
     if (response.status === 401) {
       console.log("Access Token expired");
-      return refreshTokens().then(() => getFetch(endpoint));
+      return refreshTokens().then(() => getFetch(uri));
     } else return response.json();
   });
 }
