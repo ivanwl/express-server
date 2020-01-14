@@ -82,6 +82,24 @@ function getFetch(uri) {
   });
 }
 
+function putFetch(uri, data) {
+  console.log("Request: " + uri);
+  let options = {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer " + accessToken,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data ? data : "")
+  };
+  return fetch(uri, options).then(response => {
+    if (response.status === 401) {
+      console.log("Access Token expired");
+      return refreshTokens().then(() => putFetch(uri, options));
+    } else return response.json();
+  });
+}
+
 router.get("/", (req, res) => {
   console.log("Request: Spotify base");
   res.send("Spotify Service");
@@ -145,6 +163,22 @@ router.get("/playlists", (req, res) => {
 //GET playlist by Id
 router.get("/playlist/:id", (req, res) => {
   return getFetch(API_BASE_URI + "/playlists/" + req.params.id).then(json =>
+    res.send(json)
+  );
+});
+
+//PUT start playlist
+router.put("/player/play", (req, res) => {
+  if (req.body) {
+    console.log(req.body);
+  }
+  return putFetch(API_BASE_URI + "/me/player/play", req.body).then(json =>
+    res.send(json)
+  );
+});
+
+router.put("/player/pause", (req, res) => {
+  return putFetch(API_BASE_URI + "/me/player/pause", "").then(json =>
     res.send(json)
   );
 });
